@@ -49,6 +49,13 @@ THE SOFTWARE.
 -   device.directorySeparator 目录分隔符，在 Windows 平台上是 “\”，其他平台都是 “/”
 -   device.pathSeparator 路径分隔符，在 Windows 平台上是 “;”，其他平台都是 “:”
 
+-   android 平台下需要在 main Activity 将PSNative初始化: 
+    public void onCreate(Bundle savedInstanceState) {
+        PSNative.init(this);
+
+        ...
+    }
+
 ]]
 local device = {}
 
@@ -121,7 +128,11 @@ function device.showActivityIndicator()
     if DEBUG > 1 then
         printInfo("device.showActivityIndicator()")
     end
-    CCNative:showActivityIndicator()
+    if device.platform == "android" then
+        luaj.callStaticMethod("org/cocos2dx/utils/PSNative", "showActivityIndicator", {}, "()V"); 
+    elseif device.platform == "ios" then
+        CCNative:showActivityIndicator()
+    end
 end
 
 --[[--
@@ -133,7 +144,11 @@ function device.hideActivityIndicator()
     if DEBUG > 1 then
         printInfo("device.hideActivityIndicator()")
     end
-    CCNative:hideActivityIndicator()
+    if device.platform == "android" then
+        luaj.callStaticMethod("org/cocos2dx/utils/PSNative", "hideActivityIndicator", {}, "()V"); 
+    elseif device.platform == "ios" then
+        CCNative:hideActivityIndicator()
+    end
 end
 
 --[[--
@@ -295,6 +310,86 @@ function device.showInputBox(title, message, defaultValue)
         printInfo("    defaultValue: %s", tostring(defaultValue))
     end
     return CCNative:getInputText(title, message, defaultValue)
+end
+
+
+--[[--
+
+震动
+
+@param int millisecond 震动时长(毫秒) (设置震动时长仅对android有效，默认200ms) 
+
+android 需要添加震动服务权限
+<uses-permission android:name="android.permission.VIBRATE" />  
+
+
+]]
+
+function device.vibrate(millisecond)
+    if DEBUG > 1 then
+        printInfo("device.vibrate(%s)", millisecond or "")
+    end
+ 
+    if device.platform == "android" then
+        if millisecond then
+            luaj.callStaticMethod("org/cocos2dx/utils/PSNative", "vibrate", {millisecond}, "(I)V");
+        else      
+            CCNative:vibrate()
+        end     
+    elseif device.platform == "ios" then
+        CCNative:vibrate()
+    else
+        printInfo("%s platform unsupporte vibrate", device.platform)
+    end
+end
+
+--[[
+获得系统时间，精确到微妙
+
+@return cc_timeval
+
+cc_timeval.tv_sec  seconds
+cc_timeval.tv_usec microSeconds
+
+~~~ lua
+
+-- sample
+    local tm = device.gettime()
+    printInfo("%d:%d", tm.tv_sec, tm.tv_usec)  
+~~~
+
+]]
+function device.gettime()
+    local tm = cc_timeval:new()
+    CCTime:gettimeofdayCocos2d(tm, nil)
+
+    if device.platform == "windows" then
+        tm.tv_sec = os.time()
+    end
+    return tm
+end
+
+--[[
+获得时间差，精确到毫秒
+
+@param cc_timeval tm_start 开始时间
+@param cc_timeval tm_end   结束时间
+@return double             时间差(毫秒)         
+
+~~~ lua
+
+-- sample
+    local tm_start = device.gettime()
+    --do something
+    local tm_end   = device.gettime()
+    local timesub  = device.timersub(tm_start, tm_end)
+    printInfo(timesub)  
+~~~
+
+]]
+
+function device.timersub(tm_start, tm_end)
+    return CCTime:timersubCocos2d(tm_start, tm_end)
 end
 
 return device

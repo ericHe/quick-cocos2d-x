@@ -256,8 +256,6 @@ end
 
 class() 的这种用法让我们可以在 C++ 对象基础上任意扩展行为。
 
-~
-
 既然是继承，自然就可以覆盖 C++ 对象的方法：
 
 ~~~ lua
@@ -340,6 +338,12 @@ function class(classname, super)
     return cls
 end
 
+-- 提供假名以避免和 moonscript 发生冲突
+function quick_class(classname, super)
+  return class(classname, super)
+end
+
+
 --[[--
 
 如果对象是指定类或其子类的实例，返回 true，否则返回 false
@@ -392,8 +396,8 @@ app/
 app/classes/
 app/classes/MyClass.lua
 app/classes/MyClassBase.lua
-app/data/Data1.lua
-app/data/Data2.lua
+app/classes/data/Data1.lua
+app/classes/data/Data2.lua
 
 ~~~
 

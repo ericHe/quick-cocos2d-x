@@ -34,6 +34,7 @@ end
 
 function WelcomeScene:createOpenRecents(recents)
     local label = cc.ui.UILabel.new({
+        font = "Arial",
         text = "最近打开的项目:",
         align = ui.TEXT_ALIGN_LEFT,
         color = ccc3(48, 48, 48),
@@ -53,6 +54,13 @@ function WelcomeScene:createOpenRecents(recents)
         })
         label:align(display.LEFT_TOP, display.left + 680, display.top - 360 - 28 * (i - 1))
         label:addTo(self)
+
+        -- touch event
+        label:setTouchEnabled(true)
+        label:addNodeEventListener(cc.NODE_TOUCH_EVENT, function ( event )
+            self.projectArgs = CCInteger:create(i-1)
+            CCNotificationCenter:sharedNotificationCenter():postNotification("WELCOME_OPEN_PROJECT_ARGS",self.projectArgs)
+        end)
     end
 end
 

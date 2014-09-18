@@ -38,7 +38,7 @@ extern "C" {
 #include "platform/CCZipFile.h"
 #include "platform/CCFileUtils.h"
 
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC || (CC_TARGET_PLATFORM == CC_PLATFORM_QT && defined(Q_OS_MAC)))
 #include "platform/ios/CCLuaObjcBridge.h"
 #elif (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
 #include "platform/android/CCLuaJavaBridge.h"
@@ -134,7 +134,7 @@ bool CCLuaStack::init(void)
     register_all_cocos2dx_extension_manual(m_state);
     register_all_cocos2dx_studio_manual(m_state);
 
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC)
+#if (CC_TARGET_PLATFORM == CC_PLATFORM_IOS || CC_TARGET_PLATFORM == CC_PLATFORM_MAC || (CC_TARGET_PLATFORM == CC_PLATFORM_QT && defined(Q_OS_MAC)))
     CCLuaObjcBridge::luaopen_luaoc(m_state);
 #elif (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
     CCLuaJavaBridge::luaopen_luaj(m_state);
@@ -248,21 +248,18 @@ int CCLuaStack::executeString(const char *codes)
 int CCLuaStack::executeScriptFile(const char *filename)
 {
     CCAssert(filename, "CCLuaStack::executeScriptFile() - invalid filename");
-#if (CC_TARGET_PLATFORM == CC_PLATFORM_ANDROID)
-    std::string code("require \"");
-    code.append(filename);
-    code.append("\"");
-    return executeString(code.c_str());
-#else
+
     std::string fullPath = CCFileUtils::sharedFileUtils()->fullPathForFilename(filename);
     unsigned long chunkSize = 0;
     unsigned char *chunk = CCFileUtils::sharedFileUtils()->getFileData(fullPath.c_str(), "rb", &chunkSize);
-    if (lua_loadbuffer(m_state, (const char*)chunk, (int)chunkSize, fullPath.c_str()) == 0)
-    {
-        return executeFunction(0);
+    int rn = 0;
+    if (chunk) {
+        if (lua_loadbuffer(m_state, (const char*)chunk, (int)chunkSize, fullPath.c_str()) == 0) {
+            rn = executeFunction(0);
+        }
+        delete chunk;
     }
-    return 0;
-#endif
+    return rn;
 }
 
 int CCLuaStack::executeGlobalFunction(const char *functionName, int numArgs /* = 0 */)

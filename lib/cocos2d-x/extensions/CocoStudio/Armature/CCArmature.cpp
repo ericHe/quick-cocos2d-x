@@ -89,6 +89,7 @@ CCArmature::CCArmature()
     , m_pTopBoneList(NULL)
     , m_pAnimation(NULL)
     , m_pTextureAtlasDic(NULL)
+    , m_nScriptMovementHandler(0)
 {
 }
 
@@ -491,7 +492,8 @@ void CCArmature::draw()
                 CCSkin *skin = (CCSkin *)node;
 
                 CCTextureAtlas *textureAtlas = skin->getTextureAtlas();
-                bool blendDirty = bone->isBlendDirty();
+                ccBlendFunc func = bone->getBlendFunc();
+                bool blendDirty = func.src != m_sBlendFunc.src || func.dst != m_sBlendFunc.dst;
                 if(m_pAtlas != textureAtlas || blendDirty)
                 {
                     if (m_pAtlas)
@@ -509,14 +511,12 @@ void CCArmature::draw()
 
                 if (blendDirty)
                 {
-                    ccBlendFunc func = bone->getBlendFunc();
                     ccGLBlendFunc(func.src, func.dst);
 
                     m_pAtlas->drawQuads();
                     m_pAtlas->removeAllQuads();
 
                     ccGLBlendFunc(m_sBlendFunc.src, m_sBlendFunc.dst);
-                    bone->setBlendDirty(false);
                 }
             }
             break;
@@ -618,6 +618,8 @@ CCRect CCArmature::boundingBox()
         if (CCBone *bone = dynamic_cast<CCBone *>(object))
         {
             CCRect r = bone->getDisplayManager()->getBoundingBox();
+            if (r.size.width == 0 || r.size.height == 0)
+                continue;
 
             if(first)
             {
@@ -641,6 +643,25 @@ CCRect CCArmature::boundingBox()
     }
 
     return CCRectApplyAffineTransform(boundingBox, nodeToParentTransform());
+}
+
+CCRect CCArmature::getCascadeBoundingBox(void)
+{
+    CCRect cbb;
+    if (m_cascadeBoundingBox.size.width > 0 && m_cascadeBoundingBox.size.height > 0)
+    {
+        // if cascade bounding box set by user, ignore all childrens bounding box
+        cbb = m_cascadeBoundingBox;
+    }
+    else
+    {
+        cbb = boundingBox();
+        if (m_pParent != NULL)
+        {
+            cbb = CCRectApplyAffineTransform(cbb, m_pParent->nodeToWorldTransform());
+        }
+    }
+    return cbb;
 }
 
 CCBone *CCArmature::getBoneAtPoint(float x, float y)
@@ -861,7 +882,7 @@ void CCArmature::connectMovementEventSignal(int nHandler)
 {
 	disconnectMovementEventSignal();
 	m_nScriptMovementHandler = nHandler;
-	
+
 	m_pAnimation->setMovementEventCallFunc(this, movementEvent_selector(CCArmature::onMovementEvent));
 	LUALOG("[LUA] Add CCArmature script movement handler: %d", m_nScriptMovementHandler);
 }
@@ -875,7 +896,7 @@ void CCArmature::disconnectMovementEventSignal()
 		CCScriptEngineManager::sharedManager()->getScriptEngine()->removeScriptHandler(m_nScriptMovementHandler);
         LUALOG("[LUA] Remove CCArmature script movement handler: %d", m_nScriptMovementHandler);
 	}
-	m_nScriptMovementHandler = NULL;
+	m_nScriptMovementHandler = 0;
 }
 
 
